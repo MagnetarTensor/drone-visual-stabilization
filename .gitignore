@@ -16,7 +16,8 @@ env/
 *.mov
 *.mkv
 
-# Assets — keep PNG analysis plots, ignore videos
+# Keep GIFs and PNGs in assets/
+!assets/*.gif
 !assets/*.png
 
 # OS

@@ -1,10 +1,22 @@
 # Drone Visual Stabilization — Camera Motion Estimator
 
-A Python/OpenCV implementation of drone video stabilization using **Lucas-Kanade sparse optical flow**, with two trajectory smoothing approaches:
+A Python/OpenCV implementation of drone video stabilization using **Lucas-Kanade sparse optical flow**, with two trajectory smoothing approaches compared side by side:
 - **Butterworth low-pass filter** — frequency-domain filtering
-- **Kalman filter** — the standard approach in embedded drone navigation systems
+- **Kalman filter** — the standard approach in embedded drone navigation (IMU/GPS fusion, PX4, ArduPilot)
 
 Directly inspired by visual odometry principles used in drones like the Parrot Anafi UKR for GPS-denied navigation.
+
+---
+
+## Demo
+
+### Butterworth vs Kalman — side-by-side comparison
+
+![Comparison](assets/compare.gif)
+
+### Motion trajectory analysis — raw vs smoothed
+
+![Motion Analysis](assets/drone_shaky_motion_analysis.png)
 
 ---
 
@@ -21,14 +33,6 @@ Directly inspired by visual odometry principles used in drones like the Parrot A
 - Compute per-frame corrections = smoothed − raw
 - Warp each frame with `warpAffine`
 - Output side-by-side video: original (with flow overlay) vs stabilized
-
----
-
-## Demo
-
-Motion analysis — raw vs smoothed camera trajectory:
-
-![Motion Analysis](assets/drone_shaky_motion_analysis.png)
 
 ---
 
@@ -56,8 +60,8 @@ python src/add_shake.py drone.mp4 -o drone_shaky.mp4 --intensity 1.5
 ### 2. Stabilize — Butterworth filter
 
 ```bash
-python src/stabilizer.py drone_shaky.mp4
-python src/stabilizer.py drone_shaky.mp4 --cutoff 1.0 --show
+python src/stabilizer_butterworth.py drone_shaky.mp4
+python src/stabilizer_butterworth.py drone_shaky.mp4 --cutoff 1.0 --show
 ```
 
 Output: `drone_shaky_stabilized.mp4`
@@ -81,13 +85,27 @@ Output: `drone_shaky_kalman.mp4`
 | `--process-noise` | `1e-4` | Kalman Q — higher = less smoothing |
 | `--measurement-noise` | `5e-2` | Kalman R — higher = more smoothing |
 
-### 4. Analyze camera motion
+### 4. Compare both approaches side by side
+
+```bash
+python src/compare.py drone_shaky.mp4 --show
+```
+
+Output: `assets/compare.mp4` — 3-column video with real-time stability metrics.
+
+| Column | Approach | Color |
+|---|---|---|
+| Left | Original (shaky) | White |
+| Center | Butterworth | Cyan |
+| Right | Kalman | Green |
+
+### 5. Analyze camera motion
 
 ```bash
 python src/analyze_motion.py drone_shaky.mp4
 ```
 
-Generates `assets/drone_shaky_motion_analysis.png` with raw vs smoothed trajectory plots.
+Output: `assets/drone_shaky_motion_analysis.png` — raw vs smoothed trajectory plots (tx, ty, rotation).
 
 ---
 
@@ -96,11 +114,16 @@ Generates `assets/drone_shaky_motion_analysis.png` with raw vs smoothed trajecto
 ```
 drone-visual-stabilization/
 ├── src/
-│   ├── stabilizer.py          # Butterworth low-pass filter
-│   ├── stabilizer_kalman.py   # Kalman filter
-│   ├── add_shake.py           # Realistic shake generator
-│   └── analyze_motion.py      # Trajectory visualization
-├── assets/                    # Output plots and demo screenshots
+│   ├── stabilizer_butterworth.py  # Butterworth low-pass filter
+│   ├── stabilizer_kalman.py       # Kalman filter
+│   ├── compare.py                 # Side-by-side comparison + metrics
+│   ├── add_shake.py               # Realistic periodic shake generator
+│   └── analyze_motion.py          # Trajectory visualization
+├── assets/
+│   ├── compare.gif                # Main demo
+│   ├── demo.gif                   # Butterworth demo
+│   ├── demo_kalman.gif            # Kalman demo
+│   └── drone_shaky_motion_analysis.png
 ├── requirements.txt
 └── README.md
 ```
@@ -111,9 +134,9 @@ drone-visual-stabilization/
 
 - **Lucas-Kanade (KLT)** is lightweight and interpretable — well suited for embedded hardware (Jetson Nano/Xavier)
 - **Butterworth filter** operates in the frequency domain — cuts all motion above `cutoff_hz` regardless of amplitude
-- **Kalman filter** models trajectory as a dynamic system `[position, velocity]` — same approach used in IMU/GPS fusion in flight controllers (PX4, ArduPilot). Forward+backward pass for zero phase lag.
+- **Kalman filter** models trajectory as a dynamic system `[position, velocity]` — same approach used in IMU/GPS fusion in flight controllers. Forward+backward pass (RTS-style) for zero phase lag.
 - The rigid affine model captures translation + rotation — appropriate for drone footage at quasi-constant altitude
-- For production-grade visual odometry: extend with RANSAC outlier rejection, IMU fusion, or deep optical flow (RAFT)
+- For production-grade visual odometry: extend with RANSAC outlier rejection, IMU fusion, or deep optical flow (RAFT, FlowNet2)
 
 ---
 
